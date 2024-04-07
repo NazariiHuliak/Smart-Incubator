@@ -1,7 +1,8 @@
 //old_bootloader
 
-//#define temperature_value 38
-#define temperature_value 37.75
+#define temperature_value 38
+//#define temperature_value 37.75
+#define overHeatingDeviation 0.4
 
 #define CLK 2
 #define DIO 3
@@ -48,6 +49,7 @@ bool flag_for_sound = true;
 #define reserve_rele_pin_digit 11
 #define rele_pin_VCC 9
 bool flag_rele = 0;
+bool isEmergency = 0;
 
 void setup() {
   Serial.begin(9600); 
@@ -140,18 +142,26 @@ void loop() {
     flag_rele = 0;
   } 
 
-  //EMERGENCY
-  if (Temperature>temperature_value+0.5){
+  //EMERGENCY  
+  if (Temperature>temperature_value+overHeatingDeviation){
     turnOnSpeaker();
-    digitalWrite(reserve_rele_pin_digit, 1); //розмикання ланцюга
-    digitalWrite(rele_pin_digit,0); //намагання вимкнути реле 
-    Serial.println("--Heating emergency stopped");
-  } else if (Temperature<temperature_value-2 && !flag_rele){
-    turnOnSpeaker();
-    Serial.println("--Too low temperature");
-  } else {
+    digitalWrite(reserve_rele_pin_digit, 1);
+    digitalWrite(rele_pin_digit,0);
+    isEmergency = 1;
+    Serial.println("Overheating... Reserved rele was activated. Speaker activated.");
+  } else if (Temperature<=temperature_value-0.25 && isEmergency){
     turnOffSpeaker();
     digitalWrite(reserve_rele_pin_digit, 0);
+    digitalWrite(rele_pin_digit, 1);
+    isEmergency = 0;
+    Serial.println("Normal state... Speaker deactivated.");
+  } else if(Temperature<temperature_value-2) {
+    turnOnSpeaker();
+    Serial.println("Overcooling...");
+  } else if (Temperature>=temperature_value-0.25 && Temperature<temperature_value+overHeatingDeviation){
+    turnOffSpeaker();
+  } else {
+    turnOffSpeaker();
   }
 
   Serial.print("temperature: ");
